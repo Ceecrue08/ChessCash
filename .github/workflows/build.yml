@@ -1,0 +1,50 @@
+name: Build ChessCash APK
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install tools
+        run: |
+          npm init -y
+          npm install @capacitor/core @capacitor/android
+          npx cap init ChessCash com.chesscash.app --web-dir=.
+
+      - name: Add Android
+        run: |
+          npx cap add android
+          mkdir -p android/app/src/main/assets/public
+          cp index.html android/app/src/main/assets/public/ || true
+          if [ -f manifest.json ]; then cp manifest.json android/app/src/main/assets/public/; fi
+          if ls icon-*.png 1> /dev/null 2>&1; then cp icon-*.png android/app/src/main/assets/public/; fi
+
+      - name: Build APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChessCash-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
